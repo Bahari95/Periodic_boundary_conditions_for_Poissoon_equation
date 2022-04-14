@@ -50,7 +50,7 @@ from tabulate import tabulate
 
 #==============================================================================
 #.......Poisson ALGORITHM
-def poisson_solve(V1, V2 , V):
+def poisson_solve(V1, V2 , V, u_p):
 
        u   = StencilVector(V.vector_space)
        #... We delete the first and the last spline function
@@ -95,9 +95,9 @@ def poisson_solve(V1, V2 , V):
        poisson = Poisson(mats_1, mats_2)
       
        #---- assemble rhs
-       rhs = assemble_rhs( V )
-       rhs[0,:]           = 0.
-       rhs[V1.nbasis-1,:] = 0.
+       rhs = assemble_rhs( V , fields = [u_p])
+       #rhs[0,:]           = 0.
+       #rhs[V1.nbasis-1,:] = 0.
        #--Solve a linear system
 
        b  = rhs.toarray()
@@ -106,7 +106,8 @@ def poisson_solve(V1, V2 , V):
        #x, inf   = sla.cg(M, b)
        x  = poisson.solve(b)
        x        = x.reshape(V.nbasis)
-       x[0, :]  = 25000.
+       x[0, :]  = 0.
+       x[-1, :]  = 0.
        u.from_array(V, x)
 
        Norm    = assemble_norm_l2(V, fields=[u])
@@ -127,8 +128,14 @@ V2 = SplineSpace(degree=degree, nelements= nelements, nderiv = 2,periodic=True)
 # create the tensor space
 Vh = TensorSpace(V1, V2)
 
+# ... Dirichlet boundary condition 
+xuh                         = zeros(Vh.nbasis)
+xuh[0,:]                    = 0.
+u_p                         = StencilVector(Vh.vector_space)
+u_p.from_array(Vh, xuh)
+
 print('#---IN-UNIFORM--MESH')
-u_ph, xuh, l2_norm, H1_norm = poisson_solve(V1, V2, Vh)
+u_ph, xuh, l2_norm, H1_norm = poisson_solve(V1, V2, Vh, u_p)
 print('l2_norm = {} H1_norm = {} '.format(l2_norm, H1_norm) ) 
 nbpts    = 50
 

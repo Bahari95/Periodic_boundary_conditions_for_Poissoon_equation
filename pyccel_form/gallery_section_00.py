@@ -66,8 +66,8 @@ def assemble_massmatrix1D(ne, degree, spans, basis, weights, points,  matrix):
 
 #==============================================================================Assemble rhs Poisson
 #---1 : In uniform mesh
-@types('int', 'int', 'int', 'int', 'int[:]', 'int[:]', 'double[:,:,:,:]', 'double[:,:,:,:]', 'double[:,:]', 'double[:,:]', 'double[:,:]', 'double[:,:]',  'double[:,:]')
-def assemble_vector_ex01(ne1, ne2, p1, p2, spans_1, spans_2,  basis_1, basis_2,  weights_1, weights_2, points_1, points_2, rhs):
+@types('int', 'int', 'int', 'int', 'int[:]', 'int[:]', 'double[:,:,:,:]', 'double[:,:,:,:]', 'double[:,:]', 'double[:,:]', 'double[:,:]', 'double[:,:]', 'double[:,:]', 'double[:,:]')
+def assemble_vector_ex01(ne1, ne2, p1, p2, spans_1, spans_2,  basis_1, basis_2,  weights_1, weights_2, points_1, points_2, vector_v, rhs):
 
     from numpy import exp
     from numpy import cos
@@ -80,9 +80,19 @@ def assemble_vector_ex01(ne1, ne2, p1, p2, spans_1, spans_2,  basis_1, basis_2, 
     k1 = weights_1.shape[1]
     k2 = weights_2.shape[1]
     # ...
-
-    lvalues_u = zeros((k1, k2))
-
+    
+    # ... The permittivity of vacuum : e= 1.6 * 10**(-19) and the elementary charge : epsilon = 8.854 * 10**(-12) 
+    e_epsilon  = 1.807092839394624e-8
+    
+    # ...
+    lvalues_u  = zeros((k1, k2))
+    lvalues_ux = zeros((k1, k2))
+    lvalues_uy = zeros((k1, k2))
+    # ...
+    lcoeffs_u  = zeros((p1+1,p2+1))
+    lcoeffs_w  = zeros((p1+1,p2+1))
+    lcoeffs_v  = zeros((p1+1,p2+1))
+    
     int_rhsP = 0.0
     # ... build rhs
     for ie1 in range(0, ne1):
@@ -90,17 +100,36 @@ def assemble_vector_ex01(ne1, ne2, p1, p2, spans_1, spans_2,  basis_1, basis_2, 
         for ie2 in range(0, ne2):
             i_span_2 = spans_2[ie2]
 
-            lvalues_u[ : , : ] = 0.0
+            lcoeffs_v[ : , : ] = vector_v[i_span_1 : i_span_1+p1+1, i_span_2 : i_span_2+p2+1]
             for g1 in range(0, k1):
                 for g2 in range(0, k2):
 
-                    x    = points_1[ie1, g1]
-                    y    = points_2[ie2, g2]
+                    #... Integration of Dirichlet boundary conditions
+                    sx = 0.0
+                    sy = 0.0
+                    for il_1 in range(0, p1+1):
+                        for il_2 in range(0, p2+1):
+                            bi_x1 = basis_1[ie1, il_1, 1, g1] * basis_2[ie2, il_2, 0, g2]
+                            bi_x2 = basis_1[ie1, il_1, 0, g1] * basis_2[ie2, il_2, 1, g2]
+                            # ... 
+                            coeff_v   = lcoeffs_v[il_1,il_2]
+                            # ...
+                            sx       +=  coeff_v*bi_x1
+                            sy       +=  coeff_v*bi_x2
+                    lvalues_ux[g1,g2] = sx
+                    lvalues_uy[g1,g2] = sy
 
                     # ... test 1     
-                    f = 0. #2.*pi**2 * sin(pi*x)*sin(pi*y)
+                    x                       = points_1[ie1, g1]
+                    y                       = points_2[ie2, g2]
+                    #f                = 0. 
+                    # ...
+                    f                = x*sin(5.0*pi*y) + 1.0*exp(-((x-0.5)**2 + (y-0.5)**2)/0.02)
 
                     lvalues_u[g1,g2] = f
+                    
+
+                    
             for il_1 in range(0, p1+1):
                 for il_2 in range(0, p2+1):
                     i1 = i_span_1 - p1 + il_1
@@ -109,12 +138,18 @@ def assemble_vector_ex01(ne1, ne2, p1, p2, spans_1, spans_2,  basis_1, basis_2, 
                     v = 0.0
                     for g1 in range(0, k1):
                         for g2 in range(0, k2):
-                            bi_0 = basis_1[ie1, il_1, 0, g1] * basis_2[ie2, il_2, 0, g2]
-
+                            bi_0  = basis_1[ie1, il_1, 0, g1] * basis_2[ie2, il_2, 0, g2]
+                            bi_x1 = basis_1[ie1, il_1, 1, g1] * basis_2[ie2, il_2, 0, g2]
+                            bi_x2 = basis_1[ie1, il_1, 0, g1] * basis_2[ie2, il_2, 1, g2]
+                            #..
                             wvol  = weights_1[ie1, g1]*weights_2[ie2, g2]
-
+                            
+                            # ...Dirichlet boundary conditions
+                            ux  = lvalues_ux[g1,g2]
+                            uy  = lvalues_uy[g1,g2]
+                            # ... rhs
                             u  = lvalues_u[g1,g2]
-                            v += bi_0 * u * wvol
+                            v += bi_0 * u * wvol - (ux * bi_x1  + uy * bi_x2) * wvol
 
                     rhs[i1+p1,i2+p2] += v   
     # ...

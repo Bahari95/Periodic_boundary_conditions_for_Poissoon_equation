@@ -52,29 +52,19 @@ from tabulate import tabulate
 #.......Poisson ALGORITHM
 def poisson_solve(V1, V2 , V, u_p):
 
-       u   = StencilVector(V.vector_space)
        #... We delete the first and the last spline function
        #. as a technic for applying Dirichlet boundary condition
+       u  = StencilVector(V.vector_space)
        
        #..Stiffness and Mass matrix in 1D in the first deriction
        K1 = assemble_stiffness1D(V1)
        K1 = K1.tosparse()
-       K1 = K1.toarray()
-       K1[0,:]  = 0.
-       K1[-1,:] = 0.
-       #.
-       K1[0,0]   = 1.
-       K1[-1,-1] = 1.
+       K1 = K1.toarray()[1:-1,1:-1]
        K1 = csr_matrix(K1)
-       
+
        M1 = assemble_mass1D(V1)
        M1 = M1.tosparse()
-       M1 = M1.toarray()
-       M1[0,:]  = 0.
-       M1[-1,:] = 0.
-       #.
-       M1[0,0]   = 1.
-       M1[-1,-1] = 1.
+       M1 = M1.toarray()[1:-1,1:-1]
        M1 = csr_matrix(M1)
 
        # Stiffness and Mass matrix in 1D in the second deriction
@@ -95,19 +85,18 @@ def poisson_solve(V1, V2 , V, u_p):
        poisson = Poisson(mats_1, mats_2)
       
        #---- assemble rhs
-       rhs = assemble_rhs( V , fields = [u_p])
-       #rhs[0,:]           = 0.
-       #rhs[V1.nbasis-1,:] = 0.
+       rhs = assemble_rhs( V, fields = [u_ne, u_ni, u_p])
+       # ...
+       b           = rhs.toarray()
+       b           = b.reshape(V.nbasis)
+       b           = b[1:-1, :]       
+       b           = b.reshape((V1.nbasis-2)*V2.nbasis)
        #--Solve a linear system
-
-       b  = rhs.toarray()
-
-       #x  = lu.solve(b)
-       #x, inf   = sla.cg(M, b)
-       x  = poisson.solve(b)
-       x        = x.reshape(V.nbasis)
-       x[0, :]  = 0.
-       x[-1, :]  = 0.
+       xk          = poisson.solve(b)
+       xk          = xk.reshape((V1.nbasis-2, V2.nbasis))
+       x           = zeros(V.nbasis)
+       x[1:-1,:]   = xk[:,:]
+       x[0,:]      = 25000.
        u.from_array(V, x)
 
        Norm    = assemble_norm_l2(V, fields=[u])
@@ -130,7 +119,7 @@ Vh = TensorSpace(V1, V2)
 
 # ... Dirichlet boundary condition 
 xuh                         = zeros(Vh.nbasis)
-xuh[0,:]                    = 0.
+xuh[0,:]                    = 25000.
 u_p                         = StencilVector(Vh.vector_space)
 u_p.from_array(Vh, xuh)
 

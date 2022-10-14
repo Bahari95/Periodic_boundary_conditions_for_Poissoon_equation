@@ -1,5 +1,6 @@
 __all__ = ['assemble_stiffnessmatrix1D',
            'assemble_massmatrix1D',
+           'assemble_vector_ex01',
            'assemble_norm_ex01',
 ]
 
@@ -89,8 +90,6 @@ def assemble_vector_ex01(ne1, ne2, p1, p2, spans_1, spans_2,  basis_1, basis_2, 
     lvalues_ux = zeros((k1, k2))
     lvalues_uy = zeros((k1, k2))
     # ...
-    lcoeffs_u  = zeros((p1+1,p2+1))
-    lcoeffs_w  = zeros((p1+1,p2+1))
     lcoeffs_v  = zeros((p1+1,p2+1))
     
     int_rhsP = 0.0
@@ -124,7 +123,7 @@ def assemble_vector_ex01(ne1, ne2, p1, p2, spans_1, spans_2,  basis_1, basis_2, 
                     y                       = points_2[ie2, g2]
                     #f                = 0. 
                     # ...
-                    f                = x*sin(5.0*pi*y) + 1.0*exp(-((x-0.5)**2 + (y-0.5)**2)/0.02)
+                    f                = 25*pi**2*x*sin(5*pi*y) - 10000.0*(0.5 - x)**2*exp(-50.0*(x - 0.5)**2 - 50.0*(y - 0.5)**2) - 10000.0*(0.5 - y)**2*exp(-50.0*(x - 0.5)**2 - 50.0*(y - 0.5)**2) + 200.0*exp(-50.0*(x - 0.5)**2 - 50.0*(y - 0.5)**2)
 
                     lvalues_u[g1,g2] = f
                     
@@ -213,9 +212,9 @@ def assemble_norm_ex01(ne1, ne2, p1, p2, spans_1, spans_2,  basis_1, basis_2,  w
                     y    = points_2[ie2, g2]
  
                     # ...
-                    u  = sin(pi*x)*sin(pi*y)
-                    ux = pi*cos(pi*x)*sin(pi*y)
-                    uy = pi*sin(pi*x)*cos(pi*y)
+                    u  = x*sin(5.0*pi*y) + 1.0*exp(-((x-0.5)**2 + (y-0.5)**2)/0.02)
+                    ux = 1.0*(50.0 - 100.0*x)*exp(-50.0*(x - 0.5)**2 - 50.0*(y - 0.5)**2) + sin(5*pi*y)
+                    uy = 5*pi*x*cos(5*pi*y) + 1.0*(50.0 - 100.0*y)*exp(-50.0*(x - 0.5)**2 - 50.0*(y - 0.5)**2)
                     # ...
                     uh  = lvalues_u[g1,g2]
                     uhx = lvalues_ux[g1,g2]

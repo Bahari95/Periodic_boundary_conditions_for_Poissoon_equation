@@ -4,8 +4,7 @@ from simplines import SplineSpace
 from simplines import TensorSpace
 from simplines import StencilMatrix
 from simplines import StencilVector
-from simplines import sol_field_2d
-from simplines import plot_field_2d
+from simplines import pyccel_sol_field_2d
 
 #.. Prologation by knots insertion matrix
 from simplines import prolongation_matrix
@@ -98,6 +97,7 @@ def poisson_solve(V1, V2 , V, u_p, xuh):
        x                = zeros(V.nbasis)
        x[:,1:-1]        = xk[:,:]
        x[:,:]          += xuh[:,:]
+       
        u.from_array(V, x)
 
        Norm    = assemble_norm_l2(V, fields=[u])
@@ -107,16 +107,16 @@ def poisson_solve(V1, V2 , V, u_p, xuh):
        
        return u, x, l2_norm, H1_norm
 
-degree     = 4
+degree     = 3
 nelements  = 64
 
 #---------------------------------------
 from numpy import sin, exp, pi, linspace
-u_exact = lambda x, y : x*sin(5.*pi*y) + 1.0*exp(-((x-0.5)**2 + (y-0.5)**2)/0.02)
+u_exact = lambda x, y : x**2*sin(5.*pi*y) #+ 1.0*exp(-((x-0.5)**2 + (y-0.5)**2)/0.02)
 
 #fx0 = lambda x : u_exact(-pi,x) #if x<0.25+100.*t else 1.
 #fx1 = lambda x : u_exact(pi,x)
-fy0 = lambda x : u_exact(x,-1.) #if x<0.25+100.*t else 1.
+fy0 = lambda x : u_exact(x,0.) #if x<0.25+100.*t else 1.
 fy1 = lambda x : u_exact(x,1.)
 
 #-------------------------------------------
@@ -131,7 +131,7 @@ V2        = SplineSpace(degree=degree, nelements= nelements, grid = grids, nderi
 Vh = TensorSpace(V1, V2)
 
 # compute the interpolate B-spline function for the Dirichlet boundary condition using least square method
-from approximation_bspline import least_square_Bspline
+from simplines import least_square_Bspline
 
 # ... Dirichlet boundary condition 
 x0uh                         = zeros(Vh.nbasis)
@@ -147,7 +147,7 @@ u_ph, xuh, l2_norm, H1_norm = poisson_solve(V1, V2, Vh, u_p, x0uh)
 print('l2_norm = {} H1_norm = {} '.format(l2_norm, H1_norm) ) 
 nbpts    = 80
 
-u_poisson, u_xpoisson, u_ypoisson, X, Y = sol_field_2d((nbpts,nbpts),  xuh , Vh.knots, Vh.degree)
+u_poisson, u_xpoisson, u_ypoisson, X, Y = pyccel_sol_field_2d((nbpts,nbpts),  xuh , Vh.knots, Vh.degree)
 
 #print(np.max(u_xpoisson), np.min(u_xpoisson) ) 
 

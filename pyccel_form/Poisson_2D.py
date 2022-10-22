@@ -1,4 +1,4 @@
-from simplines import compile_kernel, apply_dirichlet
+from simplines import compile_kernel, apply_dirichlet, apply_periodic
 
 from simplines import SplineSpace
 from simplines import TensorSpace
@@ -50,7 +50,7 @@ from tabulate import tabulate
 
 #==============================================================================
 #.......Poisson ALGORITHM
-def poisson_solve(V1, V2 , V, u_p, xuh):
+def poisson_solve(V1, V2 , V, u_p, xuh, periodic):
 
        #... We delete the first and the last spline function
        #. as a technic for applying Dirichlet boundary condition
@@ -58,13 +58,11 @@ def poisson_solve(V1, V2 , V, u_p, xuh):
        
        #..Stiffness and Mass matrix in 1D in the first deriction
        K1 = assemble_stiffness1D(V1)
-       K1 = K1.tosparse()
-       K1 = K1.toarray()
+       K1 = apply_periodic(V1, K1)
        K1 = csr_matrix(K1)
 
        M1 = assemble_mass1D(V1)
-       M1 = M1.tosparse()
-       M1 = M1.toarray()
+       M1 = apply_periodic(V1, M1)
        M1 = csr_matrix(M1)
 
        # Stiffness and Mass matrix in 1D in the second deriction
@@ -87,17 +85,17 @@ def poisson_solve(V1, V2 , V, u_p, xuh):
        #---- assemble rhs
        rhs              = assemble_rhs( V, fields = [u_p])
        # ...
-       b                = rhs.toarray()
-       b                = b.reshape(V.nbasis)
+       b                = apply_periodic(V, rhs, periodic)
+       b                = b.reshape(V1.nbasis-V1.degree,V2.nbasis)
        b                = b[:, 1:-1]       
-       b                = b.reshape((V1.nbasis)*(V2.nbasis-2))
+       b                = b.reshape((V1.nbasis-V1.degree)*(V2.nbasis-2))
        #--Solve a linear system
        xk               = poisson.solve(b)
-       xk               = xk.reshape((V1.nbasis, V2.nbasis-2))
-       x                = zeros(V.nbasis)
+       xk               = xk.reshape((V1.nbasis-V1.degree, V2.nbasis-2))
+       x                = zeros((V1.nbasis-V1.degree,V2.nbasis))
        x[:,1:-1]        = xk[:,:]
-       x[:,:]          += xuh[:,:]
-       
+       x[:,:]          += xuh[:-V1.degree,:]
+       x                = apply_periodic(V, x, periodic, update = True)       
        u.from_array(V, x)
 
        Norm    = assemble_norm_l2(V, fields=[u])
@@ -116,7 +114,7 @@ u_exact = lambda x, y : x**2*sin(5.*pi*y) #+ 1.0*exp(-((x-0.5)**2 + (y-0.5)**2)/
 
 #fx0 = lambda x : u_exact(-pi,x) #if x<0.25+100.*t else 1.
 #fx1 = lambda x : u_exact(pi,x)
-fy0 = lambda x : u_exact(x,0.) #if x<0.25+100.*t else 1.
+fy0 = lambda x : u_exact(x,-1.) #if x<0.25+100.*t else 1.
 fy1 = lambda x : u_exact(x,1.)
 
 #-------------------------------------------
@@ -143,10 +141,11 @@ u_p                          = StencilVector(Vh.vector_space)
 u_p.from_array(Vh, x0uh)
 
 print('#---IN-UNIFORM--MESH')
-u_ph, xuh, l2_norm, H1_norm = poisson_solve(V1, V2, Vh, u_p, x0uh)
+u_ph, xuh, l2_norm, H1_norm = poisson_solve(V1, V2, Vh, u_p, x0uh, [True, False])
 print('l2_norm = {} H1_norm = {} '.format(l2_norm, H1_norm) ) 
 nbpts    = 80
 
+print(xuh.shape)
 u_poisson, u_xpoisson, u_ypoisson, X, Y = pyccel_sol_field_2d((nbpts,nbpts),  xuh , Vh.knots, Vh.degree)
 
 #print(np.max(u_xpoisson), np.min(u_xpoisson) ) 

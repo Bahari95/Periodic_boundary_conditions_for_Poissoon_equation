@@ -2,10 +2,14 @@
 We implement Poisson equation with periodic boundary conditions using Isogeometric Analysis TOOLS 
 
 
-**Please install simplines**
+### Please install simplines
 
 **For your analysis You can find and install the following packages from the url**
 
-for psydac : https://github.com/pyccel/psydac
+# For pyccel : 
 
-for simplines : https://github.com/Bahari95/simplines
+  https://github.com/pyccel/pyccel
+
+# For simplines : 
+
+  https://github.com/Bahari95/simplines

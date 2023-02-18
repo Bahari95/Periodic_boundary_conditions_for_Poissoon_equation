@@ -156,7 +156,7 @@ fig, axes       = plt.subplots( 1, 2, figsize=[12,12], gridspec_kw={'width_ratio
 for ax in axes:
    ax.set_aspect('equal')
 axes[0].set_title( ' Approximate Solution' )
-ima = axes[0].contourf( X, Y, u_poisson.T, cmap= 'jet')
+ima = axes[0].contourf( X, Y, u_poisson, cmap= 'jet')
 divider = make_axes_locatable(axes[0]) 
 cax   = divider.append_axes("right", size="5%", pad=0.05, aspect = 40) 
 plt.colorbar(ima, cax=cax)
